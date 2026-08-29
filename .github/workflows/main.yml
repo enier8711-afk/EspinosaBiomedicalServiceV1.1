@@ -19,17 +19,22 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Descomprimir el archivo ZIP
+    - name: Descomprimir todo de forma automatica
       run: |
         unzip *.zip
-        # Si al descomprimir se creó una carpeta con el mismo nombre, extrae su contenido
-        if [ -d "EspinosaBiomedicalServiceV1.1" ]; then
-          mv EspinosaBiomedicalServiceV1.1/* .
-        fi
-
-    - name: Dar permisos de ejecucion a Gradle
-      run: chmod +x gradlew
-      continue-on-error: true
+        # Mueve todo el contenido al directorio raiz si se creo una subcarpeta
+        find . -mindepth 2 -maxdepth 2 -type d -name "src" -exec sh -c 'mv "${0%/*}"/* .' {} \;
+        
+    - name: Dar permisos de ejecucion al compilador
+      run: |
+        find . -name "gradlew" -exec chmod +x {} \;
+        find . -name "gradlew" -exec cp {} . \; 2>/dev/null || true
 
     - name: Compilar con Gradle
-      run: ./gradlew build
+      run: |
+        if [ -f "./gradlew" ]; then
+          ./gradlew build
+        else
+          echo "Buscando gradlew en subcarpetas..."
+          $(find . -name "gradlew" | head -n 1) build
+        fi
