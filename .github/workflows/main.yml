@@ -22,17 +22,12 @@ jobs:
     - name: Instalar Gradle en el Servidor
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Descomprimir y Eliminar Pantallas Defectuosas
+    - name: Descomprimir y Reparar Pantallas Rota de la IA
       run: |
         unzip *.zip
         
-        # 1. Buscar la carpeta raiz del proyecto Android
-        CONFIG_PATH=$(find . -name "settings.gradle.kts" | head -n 1)
-        if [ -z "$CONFIG_PATH" ]; then
-          echo "ERROR: No se encontro settings.gradle.kts dentro del ZIP."
-          exit 1
-        fi
-        PROJECT_DIR=$(dirname "$CONFIG_PATH")
+        # 1. Definir rutas exactas basándose en la estructura real del proyecto
+        PROJECT_DIR="EspinosaBiomedicalServiceV1"
         echo "PROJECT_ROOT=$PROJECT_DIR" >> $GITHUB_ENV
         
         # 2. Forzar compatibilidad de Java 21 en el build.gradle.kts de la app
@@ -41,13 +36,128 @@ jobs:
           sed -i '/android {/a \    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_21\n        targetCompatibility = JavaVersion.VERSION_21\n    }\n    kotlinOptions {\n        jvmTarget = "21"\n    }' "$GRADLE_FILE"
         fi
 
-        # 3. Eliminar archivos defectuosos
-        find . -name "ClienteFormScreen.kt" -delete -print
-        find . -name "EquipoFormScreen.kt" -delete -print
-        
-        # 4. Limpiar referencias
-        find . -name "*.kt" -exec sed -i '/ClienteFormScreen/d' {} \;
-        find . -name "*.kt" -exec sed -i '/EquipoFormScreen/d' {} \;
+        # 3. Ruta exacta de la interfaz de usuario descubierta
+        UI_DIR="$PROJECT_DIR/app/src/main/java/com/espinosa/biomedicalservice/ui"
+        mkdir -p "$UI_DIR"
+
+        echo "Inyectando codigo profesional y limpio en EquipoFormScreen.kt..."
+        cat << 'EOF' > "$UI_DIR/EquipoFormScreen.kt"
+        package com.espinosa.biomedicalservice.ui
+
+        import androidx.compose.foundation.layout.*
+        import androidx.compose.material3.*
+        import androidx.compose.runtime.*
+        import androidx.compose.ui.Modifier
+        import androidx.compose.ui.unit.dp
+        import androidx.navigation.NavController
+        import com.espinosa.biomedicalservice.data.*
+        import kotlinx.coroutines.launch
+
+        @Composable
+        fun EquipoFormScreen(dao: EquipoDao, clienteDao: ClienteDao, nav: NavController) {
+            val scope = rememberCoroutineScope()
+            var clientId by remember { mutableStateOf<Int?>(null) }
+            var tipo by remember { mutableStateOf("") }
+            var serie by remember { mutableStateOf("") }
+            var modelo by remember { mutableStateOf("") }
+            var inventario by remember { mutableStateOf("") }
+            var ubicacion by remember { mutableStateOf("") }
+
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text("Nuevo equipo", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(value = tipo, onValueChange = { tipo = it }, label = { Text("Tipo de equipo") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = serie, onValueChange = { serie = it }, label = { Text("Número de serie") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = inventario, onValueChange = { inventario = it }, label = { Text("Inventario") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = ubicacion, onValueChange = { ubicacion = it }, label = { Text("Ubicación") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            dao.insertar(Equipo(clientId = clientId ?: 1, tipo = tipo, serie = serie, modelo = modelo, inventario = inventario, ubicacion = ubicacion))
+                            nav.popBackStack()
+                        }
+                    },
+                    enabled = tipo.isNotEmpty() && serie.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Guardar equipo")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { nav.popBackStack() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        }
+        EOF
+
+        echo "Inyectando codigo profesional y limpio en ClienteFormScreen.kt..."
+        cat << 'EOF' > "$UI_DIR/ClienteFormScreen.kt"
+        package com.espinosa.biomedicalservice.ui
+
+        import androidx.compose.foundation.layout.*
+        import androidx.compose.material3.*
+        import androidx.compose.runtime.*
+        import androidx.compose.ui.Modifier
+        import androidx.compose.ui.unit.dp
+        import androidx.navigation.NavController
+        import com.espinosa.biomedicalservice.data.*
+        import kotlinx.coroutines.launch
+
+        @Composable
+        fun ClienteFormScreen(dao: ClienteDao, nav: NavController) {
+            val scope = rememberCoroutineScope()
+            var nombre by remember { mutableStateOf("") }
+            var telefono by remember { mutableStateOf("") }
+            var correo by remember { mutableStateOf("") }
+            var direccion by remember { mutableStateOf("") }
+            var observaciones by remember { mutableStateOf("") }
+
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text("Nuevo cliente", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = correo, onValueChange = { correo = it }, label = { Text("Correo") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                OutlinedTextField(value = observaciones, onValueChange = { observaciones = it }, label = { Text("Observaciones") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            dao.insertar(Cliente(nombre = nombre, telefono = telefono, correo = correo, direccion = direccion, observaciones = observaciones))
+                            nav.popBackStack()
+                        }
+                    },
+                    enabled = nombre.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Guardar cliente")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { nav.popBackStack() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        }
+        EOF
 
     - name: Compilar aplicacion Android
       run: |
@@ -57,6 +167,6 @@ jobs:
     - name: Guardar y Publicar APK para Descarga
       uses: actions/upload-artifact@v4
       with:
-        name: Aplicacion-Android-Base
+        name: Aplicacion-Biomedica-Completa
         path: |
           **/build/outputs/apk/debug/*.apk
