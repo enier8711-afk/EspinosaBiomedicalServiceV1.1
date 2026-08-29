@@ -41,17 +41,22 @@ jobs:
           sed -i '/android {/a \    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_21\n        targetCompatibility = JavaVersion.VERSION_21\n    }\n    kotlinOptions {\n        jvmTarget = "21"\n    }' "$GRADLE_FILE"
         fi
 
-        # 3. ELIMINACIÓN INFALIBLE: Busca y borra los dos archivos defectuosos en todo el servidor
-        echo "Buscando y removiendo archivos conflictivos de la IA..."
+        # 3. Eliminar archivos defectuosos
         find . -name "ClienteFormScreen.kt" -delete -print
         find . -name "EquipoFormScreen.kt" -delete -print
         
-        # 4. Limpiar referencias en el resto del codigo para evitar errores por los archivos borrados
+        # 4. Limpiar referencias
         find . -name "*.kt" -exec sed -i '/ClienteFormScreen/d' {} \;
         find . -name "*.kt" -exec sed -i '/EquipoFormScreen/d' {} \;
 
     - name: Compilar aplicacion Android
       run: |
         cd ${{ env.PROJECT_ROOT }}
-        # Compila la aplicacion base y genera el APK de prueba en verde
         gradle assembleDebug --no-daemon
+
+    - name: Guardar y Publicar APK para Descarga
+      uses: actions/upload-artifact@v4
+      with:
+        name: Aplicacion-Android-Base
+        path: |
+          **/build/outputs/apk/debug/*.apk
