@@ -22,7 +22,7 @@ jobs:
     - name: Instalar Gradle en el Servidor
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Descomprimir y Reestructurar Botones Mal Formados
+    - name: Descomprimir y Reemplazar Archivos Defectuosos
       run: |
         unzip *.zip
         
@@ -35,28 +35,155 @@ jobs:
         PROJECT_DIR=$(dirname "$CONFIG_PATH")
         echo "PROJECT_ROOT=$PROJECT_DIR" >> $GITHUB_ENV
         
-        # 1. Forzar compatibilidad de Java 21 en el build.gradle.kts de la app
+        # Forzar compatibilidad de Java 21 en el build.gradle.kts de la app
         GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
         if [ -f "$GRADLE_FILE" ]; then
           sed -i '/android {/a \    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_21\n        targetCompatibility = JavaVersion.VERSION_21\n    }\n    kotlinOptions {\n        jvmTarget = "21"\n    }' "$GRADLE_FILE"
         fi
 
-        # 2. Reparar la sintaxis rota de ChatGPT usando expresiones regulares avanzadas
+        # Definir ruta de las pantallas de la interfaz de usuario
         UI_DIR="$PROJECT_DIR/app/src/main/java/com/espinoza/biomedicalservice/ui"
+        
         if [ -d "$UI_DIR" ]; then
-          echo "Corrigiendo estructura de componentes Compose..."
-          
-          # Corrección específica para el botón de guardar mal formado de ChatGPT
-          sed -i -E 's/Button\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/Button(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i -E 's/Button\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/Button(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/EquipoFormScreen.kt" || true
-          
-          # Corrección específica para el botón de cancelar mal formado de ChatGPT
-          sed -i -E 's/OutlinedButton\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/OutlinedButton(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i -E 's/OutlinedButton\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/OutlinedButton(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/EquipoFormScreen.kt" || true
-          
-          # Parche genérico por si quedaron remanentes sueltos de ).Modifier o }).Modifier
-          sed -i 's/})(\(Modifier[^)]*)\)//g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i 's/})(\(Modifier[^)]*)\)//g' "$UI_DIR/EquipoFormScreen.kt" || true
+          echo "Reescribiendo EquipoFormScreen.kt de forma profesional..."
+          cat << 'EOF' > "$UI_DIR/EquipoFormScreen.kt"
+          package com.espinoza.biomedicalservice.ui
+
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.unit.dp
+          import androidx.navigation.NavController
+          import com.espinoza.biomedicalservice.data.*
+          import kotlinx.coroutines.launch
+
+          @Composable
+          fun EquipoFormScreen(dao: EquipoDao, clienteDao: ClienteDao, nav: NavController) {
+              val clientes by clienteDao.observarActivos().collectAsState(initial = emptyList())
+              val scope = rememberCoroutineScope()
+              var clientId by remember { mutableStateOf<Int?>(null) }
+              var tipo by remember { mutableStateOf("") }
+              var serie by remember { mutableStateOf("") }
+              var modelo by remember { mutableStateOf("") }
+              var inventario by remember { mutableStateOf("") }
+              var ubicacion by remember { mutableStateOf("") }
+
+              Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                  Text("Nuevo equipo", style = MaterialTheme.typography.titleLarge)
+                  Spacer(modifier = Modifier.height(16.dp))
+                  
+                  Field("Tipo de equipo", tipo) { tipo = it }
+                  Field("Número de serie", serie) { serie = it }
+                  Field("Modelo", modelo) { modelo = it }
+                  Field("Inventario", inventario) { inventario = it }
+                  Field("Ubicación", ubicacion) { ubicacion = it }
+                  
+                  Spacer(modifier = Modifier.height(24.dp))
+
+                  Button(
+                      onClick = {
+                          scope.launch {
+                              dao.insertar(Equipo(clientId = clientId ?: 0, tipo = tipo, serie = serie, modelo = modelo, inventario = inventario, ubicacion = ubicacion))
+                              nav.popBackStack()
+                          }
+                      },
+                      enabled = tipo.isNotEmpty() && serie.isNotEmpty(),
+                      modifier = Modifier.fillMaxWidth()
+                  ) {
+                      Text("Guardar equipo")
+                  }
+
+                  Spacer(modifier = Modifier.height(8.dp))
+
+                  OutlinedButton(
+                      onClick = { nav.popBackStack() },
+                      modifier = Modifier.fillMaxWidth()
+                  ) {
+                      Text("Cancelar")
+                  }
+              }
+          }
+
+          @Composable
+          private fun Field(label: String, value: String, onValueChange: (String) -> Unit) {
+              OutlinedTextField(
+                  value = value,
+                  onValueChange = onValueChange,
+                  label = { Text(label) },
+                  modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+              )
+          }
+          EOF
+
+          echo "Reescribiendo ClienteFormScreen.kt de forma profesional..."
+          cat << 'EOF' > "$UI_DIR/ClienteFormScreen.kt"
+          package com.espinoza.biomedicalservice.ui
+
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.unit.dp
+          import androidx.navigation.NavController
+          import com.espinoza.biomedicalservice.data.*
+          import kotlinx.coroutines.launch
+
+          @Composable
+          fun ClienteFormScreen(dao: ClienteDao, nav: NavController) {
+              val scope = rememberCoroutineScope()
+              var nombre by remember { mutableStateOf("") }
+              var telefono by remember { mutableStateOf("") }
+              var correo by remember { mutableStateOf("") }
+              var direccion by remember { mutableStateOf("") }
+              var observaciones by remember { mutableStateOf("") }
+
+              Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                  Text("Nuevo cliente", style = MaterialTheme.typography.titleLarge)
+                  Spacer(modifier = Modifier.height(16.dp))
+                  
+                  Field("Nombre", nombre) { nombre = it }
+                  Field("Teléfono", telefono) { telefono = it }
+                  Field("Correo", correo) { correo = it }
+                  Field("Dirección", direccion) { direccion = it }
+                  Field("Observaciones", observaciones) { observaciones = it }
+                  
+                  Spacer(modifier = Modifier.height(24.dp))
+
+                  Button(
+                      onClick = {
+                          scope.launch {
+                              dao.insertar(Cliente(nombre = nombre, telefono = telefono, correo = correo, direccion = direccion, observaciones = observaciones))
+                              nav.popBackStack()
+                          }
+                      },
+                      enabled = nombre.isNotEmpty(),
+                      modifier = Modifier.fillMaxWidth()
+                  ) {
+                      Text("Guardar cliente")
+                  }
+
+                  Spacer(modifier = Modifier.height(8.dp))
+
+                  OutlinedButton(
+                      onClick = { nav.popBackStack() },
+                      modifier = Modifier.fillMaxWidth()
+                  ) {
+                      Text("Cancelar")
+                  }
+              }
+          }
+
+          @Composable
+          private fun Field(label: String, value: String, onValueChange: (String) -> Unit) {
+              OutlinedTextField(
+                  value = value,
+                  onValueChange = onValueChange,
+                  label = { Text(label) },
+                  modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+              )
+          }
+          EOF
         fi
 
     - name: Compilar aplicacion Android
