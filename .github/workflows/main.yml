@@ -22,7 +22,7 @@ jobs:
     - name: Instalar Gradle en el Servidor
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Descomprimir y Corregir Errores de Sintaxis IA
+    - name: Descomprimir y Reestructurar Botones Mal Formados
       run: |
         unzip *.zip
         
@@ -41,19 +41,22 @@ jobs:
           sed -i '/android {/a \    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_21\n        targetCompatibility = JavaVersion.VERSION_21\n    }\n    kotlinOptions {\n        jvmTarget = "21"\n    }' "$GRADLE_FILE"
         fi
 
-        # 2. Reparar sintaxis incorrecta de botones en las pantallas
+        # 2. Reparar la sintaxis rota de ChatGPT usando expresiones regulares avanzadas
         UI_DIR="$PROJECT_DIR/app/src/main/java/com/espinoza/biomedicalservice/ui"
         if [ -d "$UI_DIR" ]; then
-          echo "Corrigiendo archivos de interfaz de usuario..."
-          # Reparamos errores comunes de anidamiento de Text() dentro de los argumentos incorrectos en Cliente y Equipo Form
-          sed -i 's/Button(onClick = {.*})(\(.*\))/Button(onClick = { \1 }) { Text("Guardar") }/g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i 's/OutlinedButton(onClick = {.*})(\(.*\))/OutlinedButton(onClick = { \1 }) { Text("Cancelar") }/g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i 's/Button(onClick = {.*})(\(.*\))/Button(onClick = { \1 }) { Text("Guardar") }/g' "$UI_DIR/EquipoFormScreen.kt" || true
-          sed -i 's/OutlinedButton(onClick = {.*})(\(.*\))/OutlinedButton(onClick = { \1 }) { Text("Cancelar") }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          echo "Corrigiendo estructura de componentes Compose..."
           
-          # Parche de emergencia por si el error es de llaves de cierre de Text dentro del boton
-          sed -i 's/})(\(Text(.*)\))/}) { \1 }/g' "$UI_DIR/ClienteFormScreen.kt" || true
-          sed -i 's/})(\(Text(.*)\))/}) { \1 }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          # Corrección específica para el botón de guardar mal formado de ChatGPT
+          sed -i -E 's/Button\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/Button(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i -E 's/Button\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/Button(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          
+          # Corrección específica para el botón de cancelar mal formado de ChatGPT
+          sed -i -E 's/OutlinedButton\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/OutlinedButton(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i -E 's/OutlinedButton\(onClick = \{([^}]*)\}\)\s*\([^)]*\)\s*\{\s*Text\(([^)]*)\)\s*\}/OutlinedButton(onClick = { \1 }, modifier = Modifier.fillMaxWidth()) { Text(\2) }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          
+          # Parche genérico por si quedaron remanentes sueltos de ).Modifier o }).Modifier
+          sed -i 's/})(\(Modifier[^)]*)\)//g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i 's/})(\(Modifier[^)]*)\)//g' "$UI_DIR/EquipoFormScreen.kt" || true
         fi
 
     - name: Compilar aplicacion Android
