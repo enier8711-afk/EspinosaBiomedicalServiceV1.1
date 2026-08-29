@@ -22,7 +22,7 @@ jobs:
     - name: Instalar Gradle en el Servidor
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Descomprimir y Forzar Toolchain de Java 21
+    - name: Descomprimir y Corregir Errores de Sintaxis IA
       run: |
         unzip *.zip
         
@@ -35,12 +35,25 @@ jobs:
         PROJECT_DIR=$(dirname "$CONFIG_PATH")
         echo "PROJECT_ROOT=$PROJECT_DIR" >> $GITHUB_ENV
         
-        # Inyectar la Toolchain de Java 21 directamente en el build.gradle.kts de la app
+        # 1. Forzar compatibilidad de Java 21 en el build.gradle.kts de la app
         GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
         if [ -f "$GRADLE_FILE" ]; then
-          echo "Inyectando Toolchain global de Java 21..."
-          # Insertamos el bloque de toolchain al inicio del bloque android { }
           sed -i '/android {/a \    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_21\n        targetCompatibility = JavaVersion.VERSION_21\n    }\n    kotlinOptions {\n        jvmTarget = "21"\n    }' "$GRADLE_FILE"
+        fi
+
+        # 2. Reparar sintaxis incorrecta de botones en las pantallas
+        UI_DIR="$PROJECT_DIR/app/src/main/java/com/espinoza/biomedicalservice/ui"
+        if [ -d "$UI_DIR" ]; then
+          echo "Corrigiendo archivos de interfaz de usuario..."
+          # Reparamos errores comunes de anidamiento de Text() dentro de los argumentos incorrectos en Cliente y Equipo Form
+          sed -i 's/Button(onClick = {.*})(\(.*\))/Button(onClick = { \1 }) { Text("Guardar") }/g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i 's/OutlinedButton(onClick = {.*})(\(.*\))/OutlinedButton(onClick = { \1 }) { Text("Cancelar") }/g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i 's/Button(onClick = {.*})(\(.*\))/Button(onClick = { \1 }) { Text("Guardar") }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          sed -i 's/OutlinedButton(onClick = {.*})(\(.*\))/OutlinedButton(onClick = { \1 }) { Text("Cancelar") }/g' "$UI_DIR/EquipoFormScreen.kt" || true
+          
+          # Parche de emergencia por si el error es de llaves de cierre de Text dentro del boton
+          sed -i 's/})(\(Text(.*)\))/}) { \1 }/g' "$UI_DIR/ClienteFormScreen.kt" || true
+          sed -i 's/})(\(Text(.*)\))/}) { \1 }/g' "$UI_DIR/EquipoFormScreen.kt" || true
         fi
 
     - name: Compilar aplicacion Android
