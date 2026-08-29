@@ -22,11 +22,9 @@ jobs:
     - name: Instalar Gradle en el Servidor
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Descomprimir y Corregir Compatibilidad de Java
+    - name: Descomprimir y buscar el proyecto
       run: |
         unzip *.zip
-        
-        # Buscar la carpeta raiz del proyecto Android
         CONFIG_PATH=$(find . -name "settings.gradle.kts" | head -n 1)
         if [ -z "$CONFIG_PATH" ]; then
           echo "ERROR: No se encontro settings.gradle.kts dentro del ZIP."
@@ -34,17 +32,9 @@ jobs:
         fi
         PROJECT_DIR=$(dirname "$CONFIG_PATH")
         echo "PROJECT_ROOT=$PROJECT_DIR" >> $GITHUB_ENV
-        
-        # Modificar dinamicamente el archivo build.gradle.kts para forzar Java 21
-        GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
-        if [ -f "$GRADLE_FILE" ]; then
-          echo "Corrigiendo compatibilidad de Java en build.gradle.kts..."
-          sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_21/g' "$GRADLE_FILE"
-          sed -i 's/compatibility = 1.8/compatibility = 21/g' "$GRADLE_FILE"
-          sed -i 's/jvmTarget = "1.8"/jvmTarget = "21"/g' "$GRADLE_FILE"
-        fi
 
-    - name: Compilar aplicacion Android
+    - name: Compilar forzando Java 21 de forma Global
       run: |
         cd ${{ env.PROJECT_ROOT }}
-        gradle build --no-daemon
+        # Usamos las propiedades del sistema para obligar al compilador de Java y Kotlin a usar la Toolchain 21
+        gradle build --no-daemon -Porg.gradle.java.installations.auto-download=false -Dorg.gradle.java.home=$JAVA_HOME_21_X64
