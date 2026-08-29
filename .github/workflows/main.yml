@@ -1,0 +1,35 @@
+name: Compilar Proyecto ZIP
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Descargar el codigo del repositorio
+      uses: actions/checkout@v4
+
+    - name: Configurar Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Descomprimir el archivo ZIP
+      run: |
+        unzip *.zip
+        # Si al descomprimir se creó una carpeta con el mismo nombre, extrae su contenido
+        if [ -d "EspinosaBiomedicalServiceV1.1" ]; then
+          mv EspinosaBiomedicalServiceV1.1/* .
+        fi
+
+    - name: Dar permisos de ejecucion a Gradle
+      run: chmod +x gradlew
+      continue-on-error: true
+
+    - name: Compilar con Gradle
+      run: ./gradlew build
