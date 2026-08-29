@@ -16,7 +16,7 @@ jobs:
     - name: Configurar Java 17 (Requerido para Android)
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
 
     - name: Instalar Gradle en el Servidor
